@@ -1,9 +1,13 @@
 """Query the database for HW5 statistics."""
+import os
 import pg8000
 
 conn = pg8000.connect(
-    host="10.61.0.3", port=5432,
-    database="hw5db", user="hw5user", password="hw5pass123",
+    host=os.environ.get("DB_HOST", "127.0.0.1"),
+    port=int(os.environ.get("DB_PORT", "5432")),
+    database=os.environ.get("DB_NAME", "hw5db"),
+    user=os.environ.get("DB_USER", "hw5user"),
+    password=os.environ.get("DB_PASS", ""),
 )
 cur = conn.cursor()
 

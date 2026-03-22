@@ -50,7 +50,7 @@ SUBSCRIPTION_ID="forbidden-requests-sub"
 DB_INSTANCE="hw5-db"
 DB_NAME="hw5db"
 DB_USER="hw5user"
-DB_PASS="hw5pass123"
+DB_PASS="${DB_PASS:-hw5pass123}"
 DB_TIER="db-f1-micro"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
