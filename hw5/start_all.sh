@@ -93,7 +93,7 @@ elif [ "${DB_STATE}" = "MISSING" ]; then
     exit 1
 else
     gcloud sql instances patch "${DB_INSTANCE}" \
-        --activation-policy=ALWAYS --project="${PROJECT_ID}" --quiet
+        --activation-policy=ALWAYS --project="${PROJECT_ID}" --quiet 2>/dev/null || true
     echo "  Activation policy set to ALWAYS. Waiting for RUNNABLE …"
     while true; do
         S=$(gcloud sql instances describe "${DB_INSTANCE}" \
@@ -182,20 +182,21 @@ start_or_create_vm "${CLIENT_VM}" \
 echo "[5/5] Ensuring services are running on VMs …"
 
 # For VMs that already had the startup script run, restart the systemd services
-# and pull the latest code from the bucket.
-gcloud compute ssh "${SERVER_VM}" --zone="${ZONE}" --project="${PROJECT_ID}" \
+# and pull the latest code from the bucket.  Timeout after 60s per VM since
+# IAP tunneling to no-external-IP VMs can be slow.
+timeout 60 gcloud compute ssh "${SERVER_VM}" --zone="${ZONE}" --project="${PROJECT_ID}" \
     --command="
         sudo gsutil -m cp 'gs://${CODE_BUCKET}/hw5/*' /opt/hw5/ 2>/dev/null || true
         sudo systemctl restart hw5-server 2>/dev/null || true
         echo 'hw5-server restarted'
-    " 2>/dev/null || echo "  (server VM not ready yet — startup script will handle it)"
+    " 2>/dev/null || echo "  (server VM not reachable via SSH — startup script will handle it)"
 
-gcloud compute ssh "${SUBSCRIBER_VM}" --zone="${ZONE}" --project="${PROJECT_ID}" \
+timeout 60 gcloud compute ssh "${SUBSCRIBER_VM}" --zone="${ZONE}" --project="${PROJECT_ID}" \
     --command="
         sudo gsutil -m cp 'gs://${CODE_BUCKET}/hw5/*' /opt/hw5/ 2>/dev/null || true
         sudo systemctl restart hw5-subscriber 2>/dev/null || true
         echo 'hw5-subscriber restarted'
-    " 2>/dev/null || echo "  (subscriber VM not ready yet — startup script will handle it)"
+    " 2>/dev/null || echo "  (subscriber VM not reachable via SSH — startup script will handle it)"
 
 # ---- Summary ------------------------------------------------------------------
 echo ""
