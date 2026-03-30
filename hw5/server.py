@@ -10,6 +10,7 @@ Tables
 import os
 import json
 import logging
+import hashlib
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -40,6 +41,30 @@ FORBIDDEN_COUNTRIES = frozenset([
     "north korea", "iran", "cuba", "myanmar",
     "iraq", "libya", "sudan", "zimbabwe", "syria",
 ])
+
+# First 20 entries of http_client.COUNTRIES (non-banned). Each gets a unique /24-style
+# first octet so HW6 can learn IP→country (TCP client_address is unrelated to X-country).
+_ALLOWED_COUNTRY_ORDER = [
+    "United States", "Canada", "United Kingdom", "Germany", "France",
+    "Japan", "Australia", "Brazil", "India", "China",
+    "Mexico", "South Korea", "Italy", "Spain", "Netherlands",
+    "Russia", "Turkey", "Argentina", "Nigeria", "Egypt",
+]
+
+
+def _synthetic_client_ip_for_country(country: str) -> str:
+    """Deterministic IPv4 from country label (must match HW5 http_client spelling)."""
+    c = (country or "").strip()
+    if not c:
+        return "0.0.0.0"
+    try:
+        idx = _ALLOWED_COUNTRY_ORDER.index(c)
+    except ValueError:
+        digest = hashlib.sha256(c.lower().encode()).digest()
+        return f"{200 + (digest[0] % 55)}.{digest[1]}.{digest[2]}.{digest[3] % 254 + 1}"
+    first = 10 + idx  # 10..29 — unique per allowed country
+    digest = hashlib.sha256(f"{c}|hw6".lower().encode()).digest()
+    return f"{first}.{digest[0]}.{digest[1]}.{digest[2] % 254 + 1}"
 
 # ---------------------------------------------------------------------------
 # Global clients (created once)
@@ -264,7 +289,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         """Insert a successful request row into the database."""
         t0 = time.perf_counter()
         db_log_success(
-            info["country"], info["client_ip"], info["gender"],
+            info["country"],
+            _synthetic_client_ip_for_country(info["country"]),
+            info["gender"],
             info["age"], info["income"], info["is_banned"], info["path"],
         )
         elapsed = time.perf_counter() - t0
