@@ -1,0 +1,4 @@
+# Apache Beam with GCP (Dataflow + GCS I/O)
+apache-beam[gcp]>=2.50.0,<3.0.0
+# Pin pillow to a version available on Dataflow worker images
+pillow>=11.0.0,<13.0.0
