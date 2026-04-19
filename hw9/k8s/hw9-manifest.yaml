@@ -1,0 +1,84 @@
+# Placeholders replaced by deploy.sh:
+#   __IMAGE__          full Artifact Registry image URL
+#   __GCP_PROJECT__    GCP project id
+#   __GCS_BUCKET__     bucket with pages/*.json
+#   __GSA_EMAIL__      Google service account for Workload Identity
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hw9-server
+  annotations:
+    iam.gke.io/gcp-service-account: __GSA_EMAIL__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hw9-server
+  labels:
+    app: hw9-server
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  progressDeadlineSeconds: 600
+  strategy:
+    type: Recreate   # single-node friendly: kill old Pod, then start new one
+  selector:
+    matchLabels:
+      app: hw9-server
+  template:
+    metadata:
+      labels:
+        app: hw9-server
+    spec:
+      serviceAccountName: hw9-server
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: server
+          image: __IMAGE__
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: GCP_PROJECT
+              value: "__GCP_PROJECT__"
+            - name: GCS_BUCKET
+              value: "__GCS_BUCKET__"
+            - name: PUBSUB_TOPIC
+              value: "forbidden-requests"
+            - name: PORT
+              value: "8080"
+          # Very small requests so any GKE node (incl. single e2-small) can
+          # schedule this Pod after system DaemonSets take their slice.
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "64Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          # Liveness only; a readiness gate is not needed because the GCP
+          # client libraries are lazily initialised on the first request
+          # (see server.py) so the TCP socket binds immediately.
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hw9-server
+  labels:
+    app: hw9-server
+spec:
+  type: LoadBalancer
+  selector:
+    app: hw9-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

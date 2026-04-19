@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+.venv
+*.md
+k8s
+*.sh
+http_client.py
+subscriber.py
+requirements_subscriber.txt

@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Local virtual envs (e.g. created by run_subscriber_on_vm.sh)
+**/.venv/
+**/.venv-sub/
+
+# Local credentials — NEVER commit
+sa-key.json
+*.json.key
+*-key.json
+
+# Local test-run artifacts
+hw9/logs/

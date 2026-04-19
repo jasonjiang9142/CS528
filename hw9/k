@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# kubectl wrapper when `kubectl` is not on PATH (same resolution as deploy.sh).
+# Usage from this directory:
+#   ./k get pods -l app=hw9-server
+#   ./k logs -l app=hw9-server --tail=50
+
+set -euo pipefail
+
+if [[ -n "${KUBECTL:-}" && -x "${KUBECTL}" ]]; then
+  exec "${KUBECTL}" "$@"
+fi
+if command -v kubectl >/dev/null 2>&1; then
+  exec kubectl "$@"
+fi
+_sdk="$(gcloud info --format='value(installation.sdk_root)' 2>/dev/null || true)"
+if [[ -n "${_sdk}" && -x "${_sdk}/bin/kubectl" ]]; then
+  exec "${_sdk}/bin/kubectl" "$@"
+fi
+echo "kubectl not found. Install with:  gcloud components install kubectl" >&2
+echo "Or add Cloud SDK bin to PATH, e.g. (macOS/Linux):" >&2
+echo "  export PATH=\"\$(gcloud info --format='value(installation.sdk_root)')/bin:\$PATH\"" >&2
+exit 1
